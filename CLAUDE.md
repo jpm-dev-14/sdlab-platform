@@ -8,7 +8,7 @@ Only plumbing: base images, `sdlab-core` (settings, logging, metrics, tracing, h
 
 ## Contracts the builds rely on
 
-- **Versioning:** git tag `vX.Y.Z` publishes every image and stack as `X.Y.Z`, multi-arch (amd64 + arm64). Immutable: a bad release gets a new version. Release with `/platform-release X.Y.Z`; every change goes in `CHANGELOG.md` under Unreleased first.
+- **Versioning:** git tag `vX.Y.Z` publishes every image and stack as `X.Y.Z`, multi-arch (amd64 + arm64). Immutable: a bad release gets a new version. A GitHub ruleset rejects moving or deleting `v*` tags, and another rejects force-pushes to `main`. Release with `/platform-release X.Y.Z`; every change goes in `CHANGELOG.md` under Unreleased first.
 - **sdlab-python:** `WORKDIR /app`, non-root, `UV_PROJECT_ENVIRONMENT` pointing at the image's venv, `sdlab-core` preinstalled from `git+https://github.com/jpm-dev-14/sdlab-platform@vX.Y.Z#subdirectory=python/sdlab-core`, the same URL builds declare, so `uv sync` sees it as installed. `sdlab-core` depends on the common clients so they appear in every build's lockfile (`uv sync` removes anything not locked). Keep the image lean.
 - **sdlab-dev:** sdlab-python plus ruff and mypy as standalone tools with the shared configs, and a `check` script (ruff format --check, ruff check, mypy --strict, the build's pytest). Used as the devcontainer image and the CI entry point.
 - **Prometheus and Grafana:** remote-write receiver on (k6 → Prometheus); Docker service discovery scrapes containers labeled `sdlab.scrape=true`; the standard dashboard puts client latency next to server CPU, pools, Redis, Postgres and Kafka lag.
@@ -43,6 +43,7 @@ Decisions to record, each ADR with options, choice and why:
 - Tests: pytest with pytest-asyncio or anyio, Hypothesis; the ruff rule set; mypy strict settings.
 - Demo tooling: pnpm; ESLint + Prettier vs. Biome. Postgres migration tool.
 - Tool pinning: exact ruff and mypy versions in sdlab-dev, mirrored locally with `uv tool install ruff==<v>` and `mypy==<v>` so the editor hook agrees with CI.
+- How the shared ruff and mypy settings reach each build repo's own files, not just the sdlab-dev image: the host-side format hook and editors read config from the repo, so a config that lives only inside an image would let local formatting and CI disagree. (The workspace's own `ruff.toml` deliberately excludes the sdlab repos, so it can't stand in.)
 
 ## Verify early (risks)
 
